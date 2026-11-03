@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>旅搭 TripMate · 一句话生成可执行行程</title>
+<style>
+  :root {
+    --bg: #F3F6F3;
+    --panel: #FFFFFF;
+    --panel-muted: #F7FAF8;
+    --ink: #17201A;
+    --muted: #66716A;
+    --line: #E1E8E2;
+    --brand: #0F7A4A;
+    --brand-soft: #E6F4EC;
+    --brand-deep: #0B5636;
+    --warn: #9A5B12;
+    --warn-soft: #FDF3E4;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(20, 35, 26, 0.04), 0 8px 24px rgba(20, 35, 26, 0.05);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 18px 28px; max-width: 1240px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 38px; height: 38px; border-radius: 12px; background: var(--brand);
+    color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 17px;
+  }
+  .brand h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  .brand p { margin: 0; font-size: 12px; color: var(--muted); }
+  .pill {
+    font-size: 12px; color: var(--brand-deep); background: var(--brand-soft);
+    border-radius: 999px; padding: 7px 14px; white-space: nowrap;
+  }
+  .shell {
+    display: grid; grid-template-columns: 372px minmax(0, 1fr); gap: 20px;
+    max-width: 1240px; margin: 0 auto; padding: 0 28px 40px;
+    align-items: start;
+  }
+  .composer {
+    position: sticky; top: 20px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+  }
+  .composer h2 { font-size: 14px; margin: 0 0 4px; }
+  .composer .hint { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+  textarea {
+    width: 100%; min-height: 104px; resize: vertical; padding: 12px 13px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel-muted);
+    font: inherit; font-size: 14px; color: var(--ink); outline: none;
+  }
+  textarea:focus { border-color: var(--brand); background: #fff; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 14px; }
+  .chip {
+    font-family: inherit; font-size: 12px; color: var(--muted); background: var(--panel-muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px;
+    cursor: pointer; transition: .15s;
+  }
+  .chip:hover { color: var(--brand-deep); border-color: #BFE0CD; background: var(--brand-soft); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .field select, .field input {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+    background: #fff; font: inherit; font-size: 13px; color: var(--ink); outline: none;
+  }
+  .field select:focus, .field input:focus { border-color: var(--brand); }
+  .submit {
+    width: 100%; border: 0; border-radius: 11px; padding: 12px; cursor: pointer;
+    background: var(--brand); color: #fff; font: inherit; font-size: 14px; font-weight: 600;
+    transition: .15s;
+  }
+  .submit:hover { background: var(--brand-deep); }
+  .submit:disabled { opacity: .55; cursor: progress; }
+  .footnote { margin: 12px 0 0; font-size: 11px; color: var(--muted); line-height: 1.7; }
+
+  .stage { min-width: 0; }
+  .empty {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 34px 30px; box-shadow: var(--shadow);
+  }
+  .empty h2 { font-size: 22px; margin: 0 0 8px; letter-spacing: .3px; }
+  .empty > p { color: var(--muted); margin: 0 0 26px; font-size: 14px; }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .flow-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel-muted);
+  }
+  .flow-card b { display: block; font-size: 13px; margin-bottom: 6px; }
+  .flow-card span { font-size: 12px; color: var(--muted); }
+  .flow-card .num {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px;
+    background: var(--brand-soft); color: var(--brand-deep); font-size: 11px; margin-bottom: 8px;
+  }
+  .empty .rule { margin-top: 24px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+
+  .hidden { display: none !important; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-head h3 { font-size: 14px; margin: 0; letter-spacing: .2px; }
+  .card-head .sub { font-size: 12px; color: var(--muted); }
+
+  .pipeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .step { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--panel); }
+  .step .n { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .step .n i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); display: inline-block; }
+  .step h4 { font-size: 13px; margin: 6px 0 3px; }
+  .step p { font-size: 11px; color: var(--muted); margin: 0; min-height: 30px; }
+  .step.active { border-color: #B9DFC9; background: var(--brand-soft); }
+  .step.active .n i { background: var(--brand); }
+  .step.done .n i { background: var(--brand); }
+  .step.fail { border-color: #EFD3AD; background: var(--warn-soft); }
+  .step.fail .n i { background: var(--warn); }
+
+  .log { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 12px; max-height: 132px; overflow: auto; }
+  .log-line { font-size: 12px; color: var(--muted); display: flex; gap: 8px; padding: 2px 0; }
+  .log-line b { color: var(--brand-deep); font-weight: 600; flex: none; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .metric { background: var(--panel-muted); border-radius: 12px; padding: 12px 14px; }
+  .metric span { font-size: 11px; color: var(--muted); display: block; }
+  .metric b { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  .metric b small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+  .badge { font-size: 12px; border-radius: 999px; padding: 5px 11px; background: var(--brand-soft); color: var(--brand-deep); white-space: nowrap; }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+
+  .day { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px; background: var(--panel-muted); }
+  .day-head b { font-size: 13px; }
+  .day-head span { font-size: 11px; color: var(--muted); }
+  .rows { padding: 6px 0; }
+  .row { display: grid; grid-template-columns: 108px 52px minmax(0, 1fr) 58px; align-items: center; gap: 8px; padding: 7px 16px; }
+  .row:hover { background: #FAFCFA; }
+  .row time { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; font-family: "SFMono-Regular", Consolas, monospace; }
+  .row .name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .cost { font-size: 12px; color: var(--muted); text-align: right; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 6px; text-align: center; background: #F0F2F0; color: var(--muted); }
+  .tag.poi { background: var(--brand-soft); color: var(--brand-deep); }
+  .tag.meal { background: #FDF3E4; color: var(--warn); }
+  .tag.intercity { background: #EAF0F5; color: #3C5A72; }
+
+  .round { border-left: 2px solid var(--line); padding: 2px 0 2px 14px; margin-bottom: 14px; }
+  .round.pass { border-color: var(--brand); }
+  .round.fail { border-color: #D9A65E; }
+  .round-head { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .round-head b { font-size: 12px; color: var(--ink); }
+  .vio { font-size: 12px; color: var(--warn); padding: 2px 0; }
+  .vio.warn { color: var(--muted); }
+  .act { font-size: 12px; color: var(--brand-deep); padding: 2px 0; }
+
+  .bars { display: grid; gap: 9px; }
+  .bar-row { display: grid; grid-template-columns: 44px 64px minmax(0, 1fr) 40px; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  .bar-track { height: 6px; border-radius: 3px; background: #EDF1ED; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--brand); }
+
+  .extras { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .extras .block { background: var(--panel-muted); border-radius: 12px; padding: 14px; }
+  .extras h4 { font-size: 12px; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+  .extras p, .extras li { font-size: 12px; margin: 0; color: var(--ink); }
+  .extras ul { margin: 0; padding-left: 16px; }
+  .pack { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pack span { font-size: 11px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 10px; padding: 9px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .btn:hover { border-color: #BFE0CD; background: var(--brand-soft); color: var(--brand-deep); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { background: var(--brand-deep); }
+  .error { background: var(--warn-soft); border: 1px solid #EFD3AD; color: var(--warn); border-radius: 12px; padding: 14px 16px; font-size: 13px; }
+
+  @media (max-width: 980px) {
+    .shell { grid-template-columns: 1fr; padding: 0 16px 28px; }
+    .composer { position: static; }
+    .topbar { padding: 16px; flex-wrap: wrap; }
+    .flow, .pipeline { grid-template-columns: repeat(2, 1fr); }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .extras { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 92px 46px minmax(0, 1fr) 44px; padding: 7px 12px; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark">旅</div>
+    <div>
+      <h1>旅搭 TripMate</h1>
+      <p>一句话 → 可执行行程 · 大模型负责想，规则引擎负责算</p>
+    </div>
+  </div>
+  <div class="pill">校验前 vs 校验后 · 完整闭环可复现</div>
+</header>
+
+<main class="shell">
+  <aside class="composer">
+    <h2>你想怎么玩？</h2>
+    <p class="hint">写一句话就行，剩下的交给编排器。</p>
+    <textarea id="text" placeholder="例如：3天厦门，两个人，人均800，想看海和吃小吃"></textarea>
+    <div class="chips" id="chips"></div>
+    <div class="fields">
+      <div class="field">
+        <label for="city">目的地</label>
+        <select id="city">
+          <option value="">自动识别</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="start">出发日期</label>
+        <input id="start" type="date">
+      </div>
+    </div>
+    <button class="submit" id="go">生成行程</button>
+    <p class="footnote">POI 白名单防编造 · R1–R7 硬约束校验 · 违规自动重排 · 断网可用离线规则版</p>
+  </aside>
+
+  <section class="stage">
+    <div id="empty" class="empty">
+      <h2>把旅行想法说清楚，行程自己长出来</h2>
+      <p>不是让模型直接写一篇攻略，而是先生成结构化行程，再用规则逐条校验，违规就回灌重排。</p>
+      <div class="flow">
+        <div class="flow-card"><span class="num">1</span><b>需求槽位</b><span>城市 / 天数 / 人数 / 预算 / 偏好 / 节奏</span></div>
+        <div class="flow-card"><span class="num">2</span><b>生成基线</b><span>白名单选点 + 分天 + 时间轴与预算账本</span></div>
+        <div class="flow-card"><span class="num">3</span><b>约束校验</b><span>R1 活动量 / R2 交通 / R3 步行 / R4 预算 …</span></div>
+        <div class="flow-card"><span class="num">4</span><b>修订重排</b><span>按违规定位换点或删减，最多两轮</span></div>
+      </div>
+      <div class="rule">R1 日活动量 · R2 单程交通 · R3 步行总量 · R4 预算 · R5 开放时间 · R6 雨天 Plan B · R7 返程缓冲</div>
+    </div>
+
+    <div id="work" class="hidden">
+      <div class="card">
+        <div class="card-head">
+          <h3>生成过程</h3>
+          <span class="sub" id="mode">离线规则版 · 纯前端</span>
+        </div>
+        <div class="pipeline">
+          <div class="step" data-step="0"><div class="n"><i></i>STEP 01</div><h4>需求槽位</h4><p id="s0">等待中</p></div>
+          <div class="step" data-step="1"><div class="n"><i></i>STEP 02</div><h4>生成基线</h4><p id="s1">等待中</p></div>
+          <div class="step" data-step="2"><div class="n"><i></i>STEP 03</div><h4>约束校验</h4><p id="s2">等待中</p></div>
+          <div class="step" data-step="3"><div class="n"><i></i>STEP 04</div><h4>修订重排</h4><p id="s3">等待中</p></div>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+      <div id="report"></div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+<script>
+const $ = (sel) => document.querySelector(sel);
+const EXAMPLES = [
+  { label: "厦门 · 3天 · 人均800", text: "3天厦门，两个人，人均800，想看海和吃小吃" },
+  { label: "长沙 · 3天 · 人均1500", text: "3天长沙，三个人，人均1500，想吃小吃和看夜景" },
+  { label: "厦门 · 5天 · 特种兵", text: "厦门5天，三个人，人均1500，特种兵，想拍照和看海" },
+  { label: "长沙 · 2天 · 人均1200", text: "长沙2天，两个人，人均1200，想拍照和逛博物馆" }
+];
+const TYPE = {
+  poi: ["景点", "poi"], meal: ["餐饮", "meal"], transport: ["交通", ""],
+  intercity: ["城际", "intercity"], free: ["机动", ""]
+};
+const state = { running: false, slots: null, checks: [], repairs: [], result: null, source: "rule" };
+
+function setStep(index, status, text) {
+  const step = document.querySelector('.step[data-step="' + index + '"]');
+  step.classList.remove("active", "done", "fail");
+  if (status) step.classList.add(status);
+  if (text) $("#s" + index).textContent = text;
+}
+function log(tag, text) {
+  const line = document.createElement("div");
+  line.className = "log-line";
+  const b = document.createElement("b"); b.textContent = tag;
+  const span = document.createElement("span"); span.textContent = text;
+  line.append(b, span);
+  $("#log").append(line);
+  $("#log").scrollTop = $("#log").scrollHeight;
+}
+function node(tag, cls, text) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+function reset() {
+  state.running = true; state.slots = null; state.checks = []; state.repairs = []; state.result = null;
+  state.ok = null;
+  state.qs = query().toString();
+  $("#mode").textContent = "识别中…";
+  $("#empty").classList.add("hidden");
+  $("#work").classList.remove("hidden");
+  $("#log").innerHTML = "";
+  $("#report").innerHTML = "";
+  for (let i = 0; i < 4; i++) setStep(i, "", "等待中");
+  setStep(0, "active", "正在解析这句话…");
+  $("#go").disabled = true;
+  $("#go").textContent = "生成中…";
+}
+function query() {
+  const p = new URLSearchParams();
+  p.set("text", $("#text").value.trim() || EXAMPLES[0].text);
+  if ($("#city").value) p.set("city", $("#city").value);
+  if ($("#start").value) p.set("start", $("#start").value);
+  p.set("rounds", "2");
+  return p;
+}
+
+/* ---------------- 流式事件 ---------------- */
+function handle(evt, source) {
+  if (evt.stage === "slots") {
+    state.slots = evt.slots;
+    const s = evt.slots;
+    setStep(0, "done", evt.city);
+    log("槽位", [evt.city, s.days + "天", s.people + "人", "人均¥" + s.budget,
+      s.pace + "节奏", s.tags.join("/")].join(" · "));
+    setStep(1, "active", "正在白名单选点…");
+  } else if (evt.stage === "draft") {
+    state.source = evt.source;
+    $("#mode").textContent = evt.source === "llm" ? "大模型选点（白名单约束）" : "离线规则版";
+    const total = evt.days.reduce((n, d) => n + d.names.length, 0);
+    setStep(1, "done", "基线 " + total + " 个景点");
+    log("基线", evt.days.map(d => "Day" + (d.index + 1) + " " + (d.names.join("、") || "空")).join(" ｜ "));
+    setStep(2, "active", "正在跑 R1–R7…");
+  } else if (evt.stage === "check") {
+    state.checks.push(evt);
+    const errs = evt.violations.filter(v => v.level === "error");
+    if (evt.round === 0) {
+      setStep(2, "done", "基线 " + errs.length + " 条硬约束");
+      log("校验", errs.length ? errs.map(v => v.rule + " " + v.message).join("；") : "基线无硬约束");
+      setStep(3, errs.length ? "active" : "done", errs.length ? "正在定位违规…" : "无需重排");
+    } else {
+      setStep(2, "done", "第 " + evt.round + " 轮后 " + errs.length + " 条");
+      log("复查", "第 " + evt.round + " 轮：" + (errs.length ? errs.length + " 条硬约束" : "全部通过"));
+    }
+  } else if (evt.stage === "repair") {
+    state.repairs.push(evt);
+    setStep(3, evt.actions.length ? "active" : "fail",
+      evt.actions.length ? "第 " + evt.round + " 轮：" + evt.actions.length + " 个动作" : "无可执行动作");
+    log("重排", evt.actions.length ? evt.actions.join("；") : "没有可执行动作");
+  } else if (evt.stage === "final") {
+    state.result = evt.result;
+    state.ok = evt.ok === true;
+    setStep(3, evt.ok ? "done" : "fail", evt.ok ? "已通过 R1–R7" : "仍有硬约束");
+    log("定稿", evt.ok ? "全部硬约束通过" : "降级为宽松版，需人工确认");
+  } else if (evt.stage === "error") {
+    showError(evt.message);
+  }
+}
+function finish() {
+  state.running = false;
+  $("#go").disabled = false;
+  $("#go").textContent = "生成行程";
+  renderReport(state.result);
+  history.replaceState(null, "", "?" + state.qs);
+}
+function showError(message) {
+  state.running = false;
+  $("#go").disabled = false;
+  $("#go").textContent = "生成行程";
+  const box = node("div", "error", message);
+  $("#report").append(box);
+}
+
+/* ---------------- 结果渲染 ---------------- */
+function renderReport(result) {
+  const plan = result.plan;
+  const report = $("#report");
+  report.innerHTML = "";
+
+  const errors = state.checks.length
+    ? state.checks[state.checks.length - 1].violations.filter(v => v.level === "error")
+    : [];
+  const poiCount = plan.days.reduce((n, d) => n + d.items.filter(i => i.type === "poi").length, 0);
+  const total = plan.budget.total;
+  const cap = plan.budget.cap;
+
+  /* 概览 */
+  const summary = node("div", "card");
+  const head = node("div", "card-head");
+  const title = node("h3", "", plan.city + " · " + plan.days.length + " 天 · " + plan.slots.people + " 人");
+  const ok = state.ok === true;
+  const badge = node("span", "badge" + (ok ? "" : " warn"),
+    ok ? "通过 R1–R7" : "仍有 " + errors.length + " 条硬约束");
+  head.append(title, badge);
+  const metrics = node("div", "metrics");
+  [["人均合计", "¥" + total, "/ ¥" + cap], ["景点", poiCount + "", "个"],
+   ["总步行", (plan.days.reduce((n, d) => n + d.walk_total_m, 0) / 1000).toFixed(1), "km"],
+   ["重排轮次", (state.repairs.length) + "", "轮"]].forEach(([label, value, unit]) => {
+    const m = node("div", "metric");
+    m.append(node("span", "", label), node("b", "", value + " "));
+    const small = node("small", "", unit); m.querySelector("b").append(small);
+    metrics.append(m);
+  });
+  summary.append(head, metrics);
+  report.append(summary);
+
+  /* 行程卡 */
+  const dayCard = node("div", "card");
+  const dHead = node("div", "card-head");
+  dHead.append(node("h3", "", "行程卡"), node("span", "sub", "时间轴 · 已按校验结果定稿"));
+  dayCard.append(dHead);
+  plan.days.forEach(day => {
+    const box = node("div", "day");
+    const dh = node("div", "day-head");
+    const left = node("b", "", "Day " + (day.index + 1) + " · " + day.date + " " + day.weekday);
+    const right = node("span", "", day.weather + " · 步行 " + (day.walk_total_m / 1000).toFixed(1) +
+      " km · 景点 " + day.items.filter(i => i.type === "poi").length + " 个");
+    dh.append(left, right);
+    const rows = node("div", "rows");
+    day.items.forEach(item => {
+      const meta = TYPE[item.type] || [item.type, ""];
+      const row = node("div", "row");
+      row.append(
+        node("time", "", item.start + "-" + item.end),
+        node("span", "tag " + meta[1], meta[0]),
+        node("span", "name", item.name),
+        node("span", "cost", item.cost ? "¥" + item.cost : "")
+      );
+      rows.append(row);
+    });
+    box.append(dh, rows);
+    if (day.backup_indoor) {
+      const bk = node("span", "sub", "雨天备选： " + day.backup_indoor);
+      bk.style.cssText = "display:block;padding:0 16px 10px;font-size:11px;color:var(--muted)";
+      box.append(bk);
+    }
+    dayCard.append(box);
+  });
+  report.append(dayCard);
+
+  /* 校验报告 */
+  const valCard = node("div", "card");
+  const vHead = node("div", "card-head");
+  vHead.append(node("h3", "", "校验-重排报告"), node("span", "sub", "违规 → 动作 → 复查"));
+  valCard.append(vHead);
+  state.checks.forEach(check => {
+    const errs = check.violations.filter(v => v.level === "error");
+    const warns = check.violations.filter(v => v.level !== "error");
+    const round = state.repairs.find(r => r.round === check.round);
+    const box = node("div", "round " + (errs.length ? "fail" : "pass"));
+    const head2 = node("div", "round-head");
+    head2.append(node("b", "", check.round === 0 ? "基线版" : "第 " + check.round + " 轮复查"),
+      node("span", "", "硬约束 " + errs.length + " / 提示 " + warns.length));
+    box.append(head2);
+    errs.forEach(v => box.append(node("div", "vio", "✗ " + v.rule + " " + v.message)));
+    warns.slice(0, 3).forEach(v => box.append(node("div", "vio warn", "· " + v.rule + " " + v.message)));
+    if (round && round.actions.length) round.actions.forEach(a => box.append(node("div", "act", "→ " + a)));
+    valCard.append(box);
+  });
+  const conclusion = node("div", "round-head");
+  conclusion.append(node("b", "", "结论"),
+    node("span", "", ok ? "R1–R7 全部通过，可直接执行" : "仍有硬约束未满足，已降级为宽松版"));
+  valCard.append(conclusion);
+  report.append(valCard);
+
+  /* 预算 */
+  const bCard = node("div", "card");
+  const bHead = node("div", "card-head");
+  bHead.append(node("h3", "", "预算账本"), node("span", "sub", "人均口径 · 含 8% 机动"));
+  const bars = node("div", "bars");
+  const rowsData = [["交通", plan.budget.transport], ["住宿", plan.budget.stay],
+    ["餐饮", plan.budget.food], ["门票", plan.budget.tickets], ["机动", plan.budget.buffer]];
+  rowsData.forEach(([label, value]) => {
+    const r = node("div", "bar-row");
+    const track = node("div", "bar-track");
+    const fill = node("div", "bar-fill");
+    fill.style.width = Math.min(100, cap ? value / cap * 100 : 0) + "%";
+    track.append(fill);
+    r.append(node("span", "", label), node("span", "", "¥" + value), track,
+      node("span", "", (cap ? Math.round(value / cap * 100) : 0) + "%"));
+    bars.append(r);
+  });
+  bCard.append(bHead, bars);
+  report.append(bCard);
+
+  /* 提醒 / 行李 / 分工 */
+  const extra = node("div", "card");
+  const eHead = node("div", "card-head");
+  eHead.append(node("h3", "", "出发前"));
+  const grid = node("div", "extras");
+  const tipBlock = node("div", "block");
+  tipBlock.append(node("h4", "", "提醒"));
+  if (plan.warnings.length) {
+    plan.warnings.slice(0, 6).forEach(w => tipBlock.append(node("p", "", "· " + w)));
+  } else {
+    tipBlock.append(node("p", "", "暂无额外提醒"));
+  }
+  const packBlock = node("div", "block");
+  packBlock.append(node("h4", "", "行李清单"));
+  const pack = node("div", "pack");
+  plan.packing.forEach(p => pack.append(node("span", "", p)));
+  packBlock.append(pack);
+  const roleBlock = node("div", "block");
+  roleBlock.append(node("h4", "", "同伴分工"));
+  const ul = node("ul", "");
+  plan.roles.forEach(r => ul.append(node("li", "", r.owner + " · " + r.task + "（" + r.detail + "）")));
+  roleBlock.append(ul);
+  const slotBlock = node("div", "block");
+  slotBlock.append(node("h4", "", "已补默认值"));
+  slotBlock.append(node("p", "", result.notes.filter(n => n.indexOf("未提到") === 0).join("；") || "需求信息完整"));
+  grid.append(tipBlock, packBlock, roleBlock, slotBlock);
+  extra.append(eHead, grid);
+  report.append(extra);
+
+  /* 导出 */
+  const actCard = node("div", "card");
+  const aHead = node("div", "card-head");
+  aHead.append(node("h3", "", "带走这份行程"));
+  const actions = node("div", "actions");
+  const fileBase = "tripmate-" + plan.city + "-" + plan.days.length + "d";
+  const exportResult = Object.assign({}, result, { ok: ok });
+  const svgText = TripMate.toSVG(exportResult);
+  const icsText = TripMate.toICS(exportResult);
+  const blobUrl = (text, type) => URL.createObjectURL(new Blob([text], { type: type + ";charset=utf-8" }));
+  const preview = node("a", "btn primary", "预览长图");
+  preview.href = blobUrl(svgText, "image/svg+xml"); preview.target = "_blank"; preview.rel = "noopener";
+  actions.append(preview);
+  [["下载 .ics 日历", blobUrl(icsText, "text/calendar"), fileBase + ".ics"],
+   ["下载 SVG 长图", blobUrl(svgText, "image/svg+xml"), fileBase + ".svg"]]
+    .forEach(([label, href, name]) => {
+      const a = node("a", "btn", label);
+      a.href = href; a.download = name;
+      actions.append(a);
+    });
+  const copy = node("button", "btn", "复制 JSON");
+  copy.addEventListener("click", () => {
+    navigator.clipboard.writeText(JSON.stringify(result, null, 2)).then(() => {
+      copy.textContent = "已复制";
+      setTimeout(() => { copy.textContent = "复制 JSON"; }, 1200);
+    });
+  });
+  actions.append(copy);
+  actCard.append(aHead, actions);
+  report.append(actCard);
+}
+
+/* ---------------- 启动 ---------------- */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function generate() {
+  if (state.running) return;
+  reset();
+  const input = $("#text").value.trim() || EXAMPLES[0].text;
+  let run;
+  try {
+    run = TripMate.run(input, {
+      city: $("#city").value || null,
+      start: $("#start").value || null,
+      rounds: 2
+    });
+  } catch (err) {
+    showError(err.message);
+    return;
+  }
+  replay(run.events);
+}
+
+async function replay(events) {
+  for (let i = 0; i < events.length; i++) {
+    handle(events[i]);
+    if (i < events.length - 1) await sleep(180);
+  }
+  finish();
+}
+
+$("#chips").innerHTML = "";
+EXAMPLES.forEach((ex, i) => {
+  const chip = node("button", "chip", ex.label);
+  chip.addEventListener("click", () => { $("#text").value = ex.text; $("#text").focus(); });
+  $("#chips").append(chip);
+});
+$("#text").value = EXAMPLES[0].text;
+
+$("#go").addEventListener("click", generate);
+$("#text").addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate();
+});
+
+Object.values(TripMate.CITIES).forEach(c => {
+  const select = $("#city");
+  const opt = document.createElement("option");
+  opt.value = c.key; opt.textContent = c.name + "（" + c.pois.length + " 个白名单景点）";
+  select.append(opt);
+});
+
+const params = new URLSearchParams(location.search);
+if (params.get("text")) {
+  $("#text").value = params.get("text");
+  if (params.get("city")) $("#city").value = params.get("city");
+  if (params.get("start")) $("#start").value = params.get("start");
+  generate();
+}
+</script>
+</body>
+</html>
