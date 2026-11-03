@@ -214,6 +214,23 @@
   .btn.primary:hover { background: var(--brand-deep); }
   .error { background: var(--warn-soft); border: 1px solid #E2C79C; color: var(--warn); border-radius: 4px; padding: 14px 16px; font-size: 13px; }
 
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .shot { margin: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel-muted); }
+  .shot img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #EFE3CB; }
+  .shot figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 10px; font-size: 12px; }
+  .shot figcaption b { font-weight: 600; letter-spacing: .04em; }
+  .shot figcaption span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .shot.missing img { display: none; }
+  .shot.missing::before {
+    content: "景"; display: grid; place-items: center; aspect-ratio: 4 / 3;
+    font-family: "KaiTi", "STKaiti", "楷体", serif; font-size: 34px; color: var(--muted);
+    background: repeating-linear-gradient(45deg, #F3E7D0 0 8px, #EFE1C6 8px 16px);
+  }
+
+  @media (max-width: 640px) {
+    .shots { grid-template-columns: repeat(2, 1fr); }
+  }
+
   @media (max-width: 980px) {
     .shell { grid-template-columns: 1fr; padding: 0 16px 28px; }
     .composer { position: static; }
@@ -411,6 +428,12 @@ function showError(message) {
 }
 
 /* ---------------- 结果渲染 ---------------- */
+function poiImage(city, name) {
+  const prompt = city + " " + name + " 实景照片，中国旅行摄影，自然光，画面干净，无文字";
+  return "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
+    encodeURIComponent(prompt) + "&image_size=landscape_4_3";
+}
+
 function renderReport(result) {
   const plan = result.plan;
   const report = $("#report");
@@ -476,6 +499,35 @@ function renderReport(result) {
     dayCard.append(box);
   });
   report.append(dayCard);
+
+  /* 景点图集 */
+  const shots = [];
+  plan.days.forEach(day => {
+    day.items.filter(i => i.type === "poi").forEach(i => {
+      shots.push({ name: i.name, day: day.index + 1 });
+    });
+  });
+  if (shots.length) {
+    const gCard = node("div", "card");
+    const gHead = node("div", "card-head");
+    gHead.append(node("h3", "", "景点图集"), node("span", "sub", "按行程顺序 · 实景示意图"));
+    gCard.append(gHead);
+    const grid = node("div", "shots");
+    shots.forEach(s => {
+      const fig = node("figure", "shot");
+      const img = node("img", "");
+      img.loading = "lazy";
+      img.alt = s.name;
+      img.src = poiImage(plan.city, s.name);
+      img.onerror = () => fig.classList.add("missing");
+      const cap = node("figcaption", "");
+      cap.append(node("b", "", s.name), node("span", "", "Day " + s.day));
+      fig.append(img, cap);
+      grid.append(fig);
+    });
+    gCard.append(grid);
+    report.append(gCard);
+  }
 
   /* 校验报告 */
   const valCard = node("div", "card");
