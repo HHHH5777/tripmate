@@ -220,6 +220,7 @@
   .shot figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 10px; font-size: 12px; }
   .shot figcaption b { font-weight: 600; letter-spacing: .04em; }
   .shot figcaption span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .shots-note { margin: 10px 0 0; font-size: 11px; color: var(--muted); }
   .shot.missing img { display: none; }
   .shot.missing::before {
     content: "景"; display: grid; place-items: center; aspect-ratio: 4 / 3;
@@ -308,6 +309,7 @@
   </section>
 </main>
 
+<script src="imgmap.js"></script>
 <script src="app.js"></script>
 <script>
 const $ = (sel) => document.querySelector(sel);
@@ -429,6 +431,8 @@ function showError(message) {
 
 /* ---------------- 结果渲染 ---------------- */
 function poiImage(city, name) {
+  const local = window.POI_IMAGES && window.POI_IMAGES[city + "|" + name];
+  if (local) return local;
   const prompt = city + " " + name + " 实景照片，中国旅行摄影，自然光，画面干净，无文字";
   return "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
     encodeURIComponent(prompt) + "&image_size=landscape_4_3";
@@ -510,7 +514,7 @@ function renderReport(result) {
   if (shots.length) {
     const gCard = node("div", "card");
     const gHead = node("div", "card-head");
-    gHead.append(node("h3", "", "景点图集"), node("span", "sub", "按行程顺序 · 实景示意图"));
+    gHead.append(node("h3", "", "景点图集"), node("span", "sub", "按行程顺序 · 实景照片"));
     gCard.append(gHead);
     const grid = node("div", "shots");
     shots.forEach(s => {
@@ -526,6 +530,7 @@ function renderReport(result) {
       grid.append(fig);
     });
     gCard.append(grid);
+    gCard.append(node("p", "shots-note", "图片来自公开网络检索，仅用于课程作业展示。"));
     report.append(gCard);
   }
 
