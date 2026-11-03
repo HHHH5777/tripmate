@@ -432,6 +432,13 @@
       TAG_WORDS[tag].some((w) => text.indexOf(w) >= 0)
     );
     if (tags.length) slots.tags = tags;
+    // 文化专线：额外加权人文与博物馆类景点，选点时优先排历史建筑、博物馆
+    if (/文化专线|文化之旅|人文之旅/.test(text)) {
+      slots.tags = (slots.tags || []).slice();
+      ["人文", "博物馆"].forEach((t) => {
+        if (slots.tags.indexOf(t) < 0) slots.tags.push(t);
+      });
+    }
 
     if (PACE_LAZY.some((w) => text.indexOf(w) >= 0)) slots.pace = "轻松";
     else if (PACE_HARD.some((w) => text.indexOf(w) >= 0)) slots.pace = "紧凑";
@@ -1090,13 +1097,13 @@
     poi: "景点", meal: "餐饮", transport: "交通", intercity: "城际", free: "机动"
   };
 
-  const INK = "#1B1F1B";
-  const MUTED = "#68706A";
-  const BRAND = "#0F7A4A";
-  const SOFT = "#E7F4EC";
-  const LINE = "#DDE4DE";
-  const CANVAS = "#F7F9F7";
-  const WARN = "#9A5B12";
+  const INK = "#2B2118";
+  const MUTED = "#7C6A55";
+  const BRAND = "#A02C2C";
+  const SOFT = "#F5E3DA";
+  const LINE = "#DFCEB0";
+  const CANVAS = "#FBF5E9";
+  const WARN = "#8C5A1B";
 
   function icsText(value) {
     return String(value).replace(/\\/g, "\\\\").replace(/;/g, "\\;")
